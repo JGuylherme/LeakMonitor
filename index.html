@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Dashboard para monitoramento de umidade em áreas propensas a alagamentos usando sensor Sensor de Chuva.">
+    <title>Monitoramento de Inundações com Sensor de Chuva</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <main>
+        <div class="container">
+            <h1>Monitoramento de Umidade em Áreas de Risco</h1>
+            <p class="intro">Este painel acompanha a umidade em locais como lajes, sob pias e áreas com risco de infiltração, utilizando o sensor Sensor de Chuva.</p>
+            <div class="dados">
+                <p>Hora: <span id="hora"><span class="skeleton"></span></span></p>
+                <p>Valor Bruto: <span id="valor">--</span></p>
+                <p>Umidade: <span id="umidade">--</span></p>
+                <p>Estado: <span id="estado">--</span></p>
+                <p>Intensidade: <span id="intensidade">--</span></p>
+            </div>
+            <p id="last-update" class="last-update">Última atualização: --</p>
+        </div>
+        <button id="theme-toggle" aria-label="Alternar tema" title="Alternar tema" class="theme-toggle-btn">🌙</button>
+        <section class="analytics-card">
+            <h2>Análise Corretiva de Umidade</h2>
+            <p title="Menor valor de umidade no período">Mínima: <span id="min-humidity">--</span>%</p>
+            <p title="Maior valor de umidade no período">Máxima: <span id="max-humidity">--</span>%</p>
+            <p title="Média de umidade no período">Média: <span id="avg-humidity">--</span>%</p>
+            <p title="Tendência da umidade (subindo, caindo, estável)">Tendência: <span id="trend-humidity">--</span></p>
+            <label for="chart-range" title="Escolha o período exibido no gráfico">
+                Período do gráfico:
+                <select id="chart-range">
+                    <option value="12">Últimas 12 leituras</option>
+                    <option value="24">Últimas 24 leituras</option>
+                    <option value="48">Últimas 48 leituras</option>
+                    <option value="96">Últimas 96 leituras</option>
+                    <option value="all">Tudo</option>
+                </select>
+            </label>
+            <canvas id="historyChart" width="400" height="120"></canvas>
+        </section>
+    </main>
+
+    <div id="spinner-overlay">
+        <div id="spinner">
+            <div class="spinner-circle"></div>
+        </div>
+    </div>
+
+    <div id="empty-state" class="empty-state">Nenhum dado disponível.<br>Por favor, aguarde a primeira leitura.</div>
+
+    <div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+      <div class="modal-box">
+        <h2 id="modal-title">Limpar Dados?</h2>
+        <p>Tem certeza que deseja limpar todo o histórico de dados? Esta ação não pode ser desfeita.</p>
+        <div class="modal-actions">
+          <button id="modal-cancel" class="modal-btn cancel">Cancelar</button>
+          <button id="modal-confirm" class="modal-btn confirm">Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="export-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="export-modal-title" tabindex="-1">
+      <div class="modal-box">
+        <h2 id="export-modal-title">Exportar Dados</h2>
+        <div class="modal-form">
+          <label for="export-type">O que exportar?</label>
+          <select id="export-type">
+            <option value="" selected disabled>Selecione...</option>
+            <option value="current">Leitura Atual</option>
+            <option value="history">Histórico de Análise</option>
+          </select>
+          <div id="export-current-options">
+            <label for="export-current-format">Formato:</label>
+            <select id="export-current-format">
+              <option value="" selected disabled>Selecione...</option>
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+            </select>
+          </div>
+          <div id="export-history-options">
+            <label for="export-history-from">De:</label>
+            <input type="date" id="export-history-from">
+            <label for="export-history-to">Até:</label>
+            <input type="date" id="export-history-to">
+            <label for="export-history-format">Formato:</label>
+            <select id="export-history-format">
+              <option value="" selected disabled>Selecione...</option>
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+            </select>
+          </div>
+          <div class="modal-actions">
+            <button id="export-cancel" class="modal-btn cancel">Cancelar</button>
+            <button id="export-download" class="modal-btn confirm" disabled>Download</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="contact-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title" tabindex="-1">
+      <div class="modal-box">
+        <h2 id="contact-modal-title">Cadastrar Contato</h2>
+        <div class="modal-form">
+          <label for="contact-type">Tipo:</label>
+          <select id="contact-type">
+            <option value="telefone">Telefone (SMS)</option>
+            <option value="email">E-mail</option>
+            <option value="whatsapp">WhatsApp</option>
+          </select>
+          <label for="contact-value">Contato:</label>
+          <input id="contact-value" type="text" placeholder="Digite o telefone ou e-mail" />
+        </div>
+        <div class="modal-actions">
+          <button id="contact-cancel" class="modal-btn cancel">Cancelar</button>
+          <button id="contact-save" class="modal-btn confirm">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="calendar-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title" tabindex="-1">
+      <div class="modal-box calendar-modal-box">
+        <h2 id="calendar-modal-title">Calendário de Umidade</h2>
+        <div id="calendar-heatmap"></div>
+        <div class="modal-actions">
+          <button id="calendar-close" class="modal-btn cancel">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="contacts-list-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="contacts-list-title" tabindex="-1">
+      <div class="modal-box contacts-list-box">
+        <h2 id="contacts-list-title">Contatos Cadastrados</h2>
+        <div id="contacts-list"></div>
+        <div class="modal-actions">
+          <button id="contacts-list-close" class="modal-btn cancel">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="calendar-btn" title="Ver calendário de umidade" aria-label="Ver calendário de umidade" class="fab-btn calendar-btn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="16" rx="2" fill="#fff" fill-opacity="0.2"/>
+        <rect x="3" y="5" width="18" height="16" rx="2" stroke="#fff" stroke-width="2"/>
+        <path d="M8 3v4M16 3v4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        <rect x="7" y="10" width="2" height="2" rx="1" fill="#fff"/>
+        <rect x="11" y="10" width="2" height="2" rx="1" fill="#fff"/>
+        <rect x="15" y="10" width="2" height="2" rx="1" fill="#fff"/>
+        <rect x="7" y="14" width="2" height="2" rx="1" fill="#fff"/>
+        <rect x="11" y="14" width="2" height="2" rx="1" fill="#fff"/>
+        <rect x="15" y="14" width="2" height="2" rx="1" fill="#fff"/>
+      </svg>
+    </button>
+    <button id="export-data-btn" title="Exportar dados" aria-label="Exportar dados" class="fab-btn export-btn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 4v10m0 0l-4-4m4 4l4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="4" y="18" width="16" height="2" rx="1" fill="#fff" fill-opacity="0.2"/>
+      </svg>
+    </button>
+    <button id="clear-data-btn" title="Limpar histórico de dados" aria-label="Limpar histórico de dados" class="fab-btn clear-btn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6h16z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10 11v6M14 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button id="contacts-list-btn" title="Ver contatos cadastrados" aria-label="Ver contatos" class="fab-btn contacts-btn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="8" r="4" stroke="#fff" stroke-width="2" fill="none"/>
+        <path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button id="add-contact-btn" title="Cadastrar contato para alerta" class="fab-btn add-contact-btn" aria-label="Cadastrar contato para alerta">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 12v6M12 12H6m6 0h6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="8" r="4" stroke="#fff" stroke-width="2" fill="none"/>
+      </svg>
+    </button>
+    <noscript>
+      <div style="padding:20px;text-align:center;color:#c62828;font-weight:bold;">
+        Este dashboard requer JavaScript habilitado para funcionar corretamente.
+      </div>
+    </noscript>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
